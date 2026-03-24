@@ -33,4 +33,6 @@ public class ShowSeat {
 
     @Enumerated(EnumType.STRING)
     private SeatStatus status;
+
+    private Double price;
 }

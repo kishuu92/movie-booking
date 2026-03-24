@@ -1,22 +1,15 @@
 package com.xyz.movie_booking.dto;
 
 import com.xyz.movie_booking.model.enums.SeatStatus;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.Getter;
 
+@Getter
+@AllArgsConstructor
 public class SeatInfo {
 
-    private String seatNumber;
-    private SeatStatus status;
-
-    public SeatInfo(String seatNumber, SeatStatus status) {
-        this.seatNumber = seatNumber;
-        this.status = status;
-    }
-
-    public String getSeatNumber() {
-        return seatNumber;
-    }
-
-    public SeatStatus getStatus() {
-        return status;
-    }
+    private final String seatNumber;
+    private final SeatStatus status;
+    private final Double price;
 }

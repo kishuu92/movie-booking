@@ -75,7 +75,7 @@ public class ShowService {
             log.warn("Seat map missing for showId={}", showId);
         }
         List<SeatInfo> seatInfos = seats.stream()
-                .map(s -> new SeatInfo(s.getSeatNumber(), s.getStatus()))
+                .map(s -> new SeatInfo(s.getSeatNumber(), s.getStatus(), s.getPrice()))
                 .toList();
 
         return new SeatResponse(showId, seatInfos);

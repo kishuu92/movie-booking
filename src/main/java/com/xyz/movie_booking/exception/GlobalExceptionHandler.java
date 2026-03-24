@@ -5,6 +5,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
@@ -29,6 +30,23 @@ public class GlobalExceptionHandler {
         return ResponseEntity.badRequest()
                 .body(new ApiResponse<>(false, null, ex.getMessage()));
     }
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<ApiResponse<Void>> handleValidationException(MethodArgumentNotValidException ex) {
+
+        StringBuilder errorMessage = new StringBuilder("Validation failed: ");
+
+        ex.getBindingResult().getFieldErrors().forEach(error -> {
+            errorMessage.append("Field '")
+                    .append(error.getField())
+                    .append("' ")
+                    .append(error.getDefaultMessage())
+                    .append("; ");
+        });
+
+        return ResponseEntity.badRequest().body(new ApiResponse<>(false, null, errorMessage.toString()));
+    }
+
 
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
     public ResponseEntity<ApiResponse<String>> handleTypeMismatch(

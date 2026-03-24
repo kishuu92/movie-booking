@@ -1,24 +1,16 @@
 package com.xyz.movie_booking.dto;
 
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+
 import java.util.List;
 
+@Getter
+@AllArgsConstructor
 public class SeatResponse {
 
-    private Long showId;
-    private List<SeatInfo> seats;
-
-    public SeatResponse(Long showId, List<SeatInfo> seats) {
-        this.showId = showId;
-        this.seats = seats;
-    }
-
-    public Long getShowId() {
-        return showId;
-    }
-
-    public List<SeatInfo> getSeats() {
-        return seats;
-    }
+    private final Long showId;
+    private final List<SeatInfo> seats;
 }
 
 
