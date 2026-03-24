@@ -13,12 +13,12 @@ import java.util.List;
 @AllArgsConstructor
 public class BookingRequest {
 
-    @NotNull
+    @NotNull(message = "userId is required")
     private Long userId;
 
-    @NotNull
+    @NotNull(message = "showId is required")
     private Long showId;
 
-    @NotEmpty
+    @NotEmpty(message = "At least one seat must be selected")
     private List<String> seatNumbers;
 }

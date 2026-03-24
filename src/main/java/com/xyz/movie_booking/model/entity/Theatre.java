@@ -10,6 +10,9 @@ import lombok.Setter;
         name = "theatre",
         indexes = {
                 @Index(name = "idx_city", columnList = "city")
+        },
+        uniqueConstraints = {
+                @UniqueConstraint(columnNames = {"name", "city"})
         }
 )
 @NoArgsConstructor
@@ -21,12 +24,16 @@ public class Theatre {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false)
+    @Column(nullable = false, length = 100)
     private String name;
 
-    @Column(nullable = false)
+    // Should be stored in normalized form (lowercase, trimmed)
+    @Column(nullable = false, length = 50)
     private String city;
 
+    @Column(length = 255)
     private String address;
+
+    @Column(length = 20)
     private String contact;
 }

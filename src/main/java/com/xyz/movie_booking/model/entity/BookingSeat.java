@@ -24,9 +24,11 @@ public class BookingSeat {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "booking_id", nullable = false)
     private Booking booking;
 
+    // Stored in normalized format (uppercase, trimmed)
+    @Column(nullable = false, length = 10)
     private String seatNumber;
 }

@@ -2,6 +2,7 @@ package com.xyz.movie_booking.model.entity;
 
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.Min;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -13,7 +14,7 @@ import java.time.LocalTime;
 @Table(
         name = "shows",
         indexes = {
-                @Index(name = "idx_movie_city_date", columnList = "movie_id, show_date"),
+                @Index(name = "idx_movie_date", columnList = "movie_id, show_date"),
                 @Index(name = "idx_theatre", columnList = "theatre_id")
         },
         uniqueConstraints = {
@@ -29,17 +30,25 @@ public class Show {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne
-    @JoinColumn(name = "movie_id")
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "movie_id", nullable = false)
     private Movie movie;
 
-    @ManyToOne
-    @JoinColumn(name = "theatre_id")
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "theatre_id", nullable = false)
     private Theatre theatre;
 
+    @Column(nullable = false)
     private LocalDate showDate;
+
+    @Column(nullable = false)
     private LocalTime startTime;
 
+    @Column(nullable = false)
+    @Min(0)
     private Integer totalSeats;
+
+    @Column(nullable = false)
+    @Min(0)
     private Integer availableSeats;
 }

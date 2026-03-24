@@ -13,11 +13,11 @@ import java.util.List;
 public interface ShowRepository extends JpaRepository<Show, Long> {
 
     @Query("""
-        SELECT s FROM Show s
-        WHERE s.movie.id = :movieId
-        AND s.theatre.city = :city
-        AND s.showDate = :date
-    """)
+                SELECT s FROM Show s
+                WHERE s.movie.id = :movieId
+                AND LOWER(s.theatre.city) = LOWER(:city)
+                AND s.showDate = :date
+            """)
     List<Show> findShows(
             @Param("movieId") Long movieId,
             @Param("city") String city,
