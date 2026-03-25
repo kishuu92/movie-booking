@@ -15,33 +15,66 @@ import com.xyz.movie_booking.repository.BookingRepository;
 import com.xyz.movie_booking.repository.BookingSeatRepository;
 import com.xyz.movie_booking.repository.ShowRepository;
 import com.xyz.movie_booking.repository.ShowSeatRepository;
+import com.xyz.movie_booking.strategy.discount.DiscountHandler;
+import com.xyz.movie_booking.strategy.pricing.PricingStrategy;
 import jakarta.persistence.LockTimeoutException;
 import jakarta.persistence.PessimisticLockException;
-import jakarta.transaction.Transactional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.util.List;
+import java.util.Map;
 
 @Service
 public class BookingService {
 
     private static final Logger log = LoggerFactory.getLogger(BookingService.class);
 
+    private final PricingStrategy pricingStrategy;
+    private final DiscountHandler discountHandler;
     private final ShowRepository showRepository;
     private final ShowSeatRepository showSeatRepository;
     private final BookingRepository bookingRepository;
     private final BookingSeatRepository bookingSeatRepository;
+    private final PaymentService paymentService;
 
-    public BookingService(ShowRepository showRepository,
+    public BookingService(PricingStrategy pricingStrategy,
+                          DiscountHandler discountHandler,
+                          ShowRepository showRepository,
                           ShowSeatRepository showSeatRepository,
                           BookingRepository bookingRepository,
-                          BookingSeatRepository bookingSeatRepository) {
+                          BookingSeatRepository bookingSeatRepository,
+                          PaymentService paymentService) {
+        this.pricingStrategy = pricingStrategy;
+        this.discountHandler = discountHandler;
         this.showRepository = showRepository;
         this.showSeatRepository = showSeatRepository;
         this.bookingRepository = bookingRepository;
         this.bookingSeatRepository = bookingSeatRepository;
+        this.paymentService = paymentService;
+    }
+
+    public BookingResponse getBooking(Long bookingId) {
+
+        Booking booking = bookingRepository.findById(bookingId)
+                .orElseThrow(() -> new ResourceNotFoundException("Booking not found"));
+
+        List<String> seats = bookingSeatRepository.findByBookingId(bookingId)
+                .stream()
+                .map(BookingSeat::getSeatNumber)
+                .toList();
+
+        return new BookingResponse(
+                booking.getId(),
+                booking.getStatus(),
+                booking.getTotalAmount(),
+                "/bookings/" + booking.getId(),
+                seats
+        );
     }
 
     @Transactional
@@ -60,24 +93,41 @@ public class BookingService {
 
         log.info("Booking seats={} for showId={}", seats, showId);
 
-        double totalAmount = calculateTotal(seats);
+        double totalAmount = calculateTotal(seats, show);
 
-        markSeatsBooked(seats);
+        totalAmount = discountHandler.apply(totalAmount, request);
 
-        // Managed entity → auto update via dirty checking
-        show.setAvailableSeats(show.getAvailableSeats() - seats.size());
+        // LOCK seats
+        markSeatsLocked(seats);
 
+        // create booking as PENDING
         Booking booking = createBookingEntity(request, show, seats.size(), totalAmount);
 
         Booking savedBooking = bookingRepository.save(booking);
 
         saveBookingSeats(savedBooking, seats);
 
+        // trigger payment AFTER COMMIT
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                paymentService.processPayment(savedBooking.getId());
+            }
+        });
+
         return new BookingResponse(
                 savedBooking.getId(),
                 savedBooking.getStatus(),
-                savedBooking.getTotalAmount()
+                savedBooking.getTotalAmount(),
+                "bookings/" + savedBooking.getId(),
+                requestedSeats
         );
+    }
+
+    private void markSeatsLocked(List<ShowSeat> seats) {
+        for (ShowSeat seat : seats) {
+            seat.setStatus(SeatStatus.LOCKED);
+        }
     }
 
     private List<String> normalizeSeats(List<String> seats) {
@@ -118,16 +168,17 @@ public class BookingService {
         }
     }
 
-    private double calculateTotal(List<ShowSeat> seats) {
-        return seats.stream()
-                .mapToDouble(ShowSeat::getPrice)
-                .sum();
-    }
+    private double calculateTotal(List<ShowSeat> seats, Show show) {
 
-    private void markSeatsBooked(List<ShowSeat> seats) {
-        for (ShowSeat seat : seats) {
-            seat.setStatus(SeatStatus.BOOKED);
-        }
+        Map<String, Double> priceMap =
+                pricingStrategy.calculateSeatPrices(seats, show);
+
+        double totalAmount = priceMap.values()
+                .stream()
+                .mapToDouble(Double::doubleValue)
+                .sum();
+
+        return totalAmount;
     }
 
     private Booking createBookingEntity(BookingRequest request, Show show, int seatCount, double totalAmount) {
@@ -135,7 +186,7 @@ public class BookingService {
         booking.setUserId(request.getUserId());
         booking.setShow(show);
         booking.setNumberOfSeats(seatCount);
-        booking.setStatus(BookingStatus.CONFIRMED);
+        booking.setStatus(BookingStatus.PENDING);
         booking.setTotalAmount(totalAmount);
         return booking;
     }

@@ -10,10 +10,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @Validated
 @RestController
@@ -32,12 +29,23 @@ public class BookingController {
     public ResponseEntity<ApiResponse<BookingResponse>> createBooking(
             @Valid @RequestBody BookingRequest request) {
 
-        log.info("Received booking request for showId={}, seats={}", request.getShowId(), request.getSeatNumbers());
+        log.info("Initiating booking for showId={}, seats={}", request.getShowId(), request.getSeatNumbers());
 
         BookingResponse response = bookingService.createBooking(request);
 
         return ResponseEntity
                 .status(HttpStatus.CREATED)
-                .body(new ApiResponse<>(true, response, "Booking successful"));
+                .body(new ApiResponse<>(true, response, "Booking initiated. Awaiting payment confirmation"));
+    }
+
+    @GetMapping("/{bookingId}")
+    public ResponseEntity<ApiResponse<BookingResponse>> getBooking(
+            @PathVariable Long bookingId) {
+
+        BookingResponse response = bookingService.getBooking(bookingId);
+
+        return ResponseEntity.ok(
+                new ApiResponse<>(true, response, "Booking fetched successfully")
+        );
     }
 }

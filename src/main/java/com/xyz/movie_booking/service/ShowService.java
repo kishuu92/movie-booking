@@ -8,6 +8,7 @@ import com.xyz.movie_booking.model.entity.ShowSeat;
 import com.xyz.movie_booking.repository.MovieRepository;
 import com.xyz.movie_booking.repository.ShowRepository;
 import com.xyz.movie_booking.repository.ShowSeatRepository;
+import com.xyz.movie_booking.strategy.pricing.PricingStrategy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -23,13 +24,16 @@ public class ShowService {
 
     private static final Logger log = LoggerFactory.getLogger(ShowService.class);
 
+    private final PricingStrategy pricingStrategy;
     private final ShowRepository showRepository;
     private final MovieRepository movieRepository;
     private final ShowSeatRepository showSeatRepository;
 
-    public ShowService(ShowRepository showRepository,
+    public ShowService(PricingStrategy pricingStrategy,
+                       ShowRepository showRepository,
                        MovieRepository movieRepository,
                        ShowSeatRepository showSeatRepository) {
+        this.pricingStrategy = pricingStrategy;
         this.showRepository = showRepository;
         this.movieRepository = movieRepository;
         this.showSeatRepository = showSeatRepository;
@@ -71,8 +75,11 @@ public class ShowService {
 
         log.info("Fetching show seats for showId={}", showId);
 
+        Map<String, Double> priceMap =
+                pricingStrategy.calculateSeatPrices(seats, show);
+
         List<SeatInfo> seatInfos = seats.stream()
-                .map(s -> new SeatInfo(s.getSeatNumber(), s.getStatus(), s.getPrice()))
+                .map(s -> new SeatInfo(s.getSeatNumber(), s.getStatus(), priceMap.get(s.getSeatNumber())))
                 .toList();
 
         return new SeatResponse(showId, seatInfos);
